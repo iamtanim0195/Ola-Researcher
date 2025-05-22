@@ -1,3 +1,4 @@
+// lib/mongoose.js
 import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -8,7 +9,7 @@ if (!MONGODB_URI) {
 
 let cached = global.mongoose || { conn: null, promise: null };
 
-async function connectToDatabase() {
+export async function connectToDatabase() {  // Changed to named export
     if (cached.conn) return cached.conn;
 
     if (!cached.promise) {
@@ -21,5 +22,3 @@ async function connectToDatabase() {
     global.mongoose = cached;
     return cached.conn;
 }
-
-export default connectToDatabase;
