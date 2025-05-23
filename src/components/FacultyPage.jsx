@@ -54,8 +54,10 @@ const FacultyPage = () => {
         // Check research area match
         const matchesResearch =
             selectedResearchAreas.length === 0 ||
-            selectedResearchAreas.every((area) =>
-                researchList.map((r) => r.toLowerCase()).includes(area.toLowerCase())
+            researchList.some((r) =>
+                selectedResearchAreas.some(
+                    (area) => r.toLowerCase() === area.toLowerCase()
+                )
             );
 
         // Check IELTS match
