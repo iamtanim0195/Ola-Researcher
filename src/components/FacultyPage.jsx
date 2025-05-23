@@ -1,4 +1,3 @@
-// src/components/FacultyPage.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,9 @@ const FacultyPage = () => {
     const [viewMode, setViewMode] = useState('professors');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedResearchAreas, setSelectedResearchAreas] = useState([]);
+    const [ieltsScore, setIeltsScore] = useState('');
+    const [allResearchAreas, setAllResearchAreas] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -22,7 +23,17 @@ const FacultyPage = () => {
                 }
 
                 const result = await response.json();
-                setData(Array.isArray(result) ? result : []);
+                const filtered = Array.isArray(result) ? result : [];
+                setData(filtered);
+
+                // Extract all research areas for multi-select options
+                const areas = new Set();
+                filtered.forEach((item) => {
+                    const areasList =
+                        viewMode === 'professors' ? item.research_areas : item.research_fields;
+                    (areasList || []).forEach((area) => areas.add(area));
+                });
+                setAllResearchAreas([...areas]);
             } catch (err) {
                 console.error('Fetch error:', err);
                 setError(err.message);
@@ -35,18 +46,33 @@ const FacultyPage = () => {
         fetchData();
     }, [viewMode]);
 
-    const handleSearch = (e) => {
-        setSearchTerm(e.target.value);
-    };
-
+    // Advanced filtering
     const filteredData = data.filter((item) => {
         const researchList =
             (viewMode === 'professors' ? item.research_areas : item.research_fields) || [];
 
-        return researchList.some((area) =>
-            area.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        // Check research area match
+        const matchesResearch =
+            selectedResearchAreas.length === 0 ||
+            selectedResearchAreas.every((area) =>
+                researchList.map((r) => r.toLowerCase()).includes(area.toLowerCase())
+            );
+
+        // Check IELTS match
+        const requiredIelts = item.ielts_minimum || item.ielts_score;
+        const matchesIelts =
+            !ieltsScore || !requiredIelts || parseFloat(ieltsScore) >= parseFloat(requiredIelts);
+
+        return matchesResearch && matchesIelts;
     });
+
+    const handleResearchAreaToggle = (area) => {
+        setSelectedResearchAreas((prev) =>
+            prev.includes(area)
+                ? prev.filter((a) => a !== area)
+                : [...prev, area]
+        );
+    };
 
     if (loading) return <div className="text-center py-10">Loading...</div>;
     if (error) return <div className="text-center py-10 text-red-500">Error: {error}</div>;
@@ -61,41 +87,58 @@ const FacultyPage = () => {
                     <button
                         onClick={() => {
                             setViewMode('professors');
-                            setSearchTerm('');
+                            setSelectedResearchAreas([]);
+                            setIeltsScore('');
                         }}
-                        className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
-                            viewMode === 'professors'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium rounded-l-lg ${viewMode === 'professors'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
                     >
                         Students
                     </button>
                     <button
                         onClick={() => {
                             setViewMode('students');
-                            setSearchTerm('');
+                            setSelectedResearchAreas([]);
+                            setIeltsScore('');
                         }}
-                        className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
-                            viewMode === 'students'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium rounded-r-lg ${viewMode === 'students'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
                     >
                         Professors
                     </button>
                 </div>
             </div>
 
-            {/* Search Input */}
-            <div className="flex justify-center mb-8">
+            {/* IELTS Input */}
+            <div className="flex justify-center mb-4">
                 <input
-                    type="text"
-                    placeholder="Search by Research Area..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="w-full max-w-md px-4 py-2 border rounded-md shadow-sm focus:ring focus:ring-blue-200"
+                    type="number"
+                    step="0.5"
+                    placeholder="Enter your IELTS score"
+                    value={ieltsScore}
+                    onChange={(e) => setIeltsScore(e.target.value)}
+                    className="w-full max-w-xs px-4 py-2 border rounded-md shadow-sm focus:ring focus:ring-blue-200"
                 />
+            </div>
+
+            {/* Research Area Multi-select */}
+            <div className="mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {allResearchAreas.map((area) => (
+                    <label
+                        key={area}
+                        className={`cursor-pointer border px-3 py-1 rounded-full text-sm text-center ${selectedResearchAreas.includes(area)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100'
+                            }`}
+                        onClick={() => handleResearchAreaToggle(area)}
+                    >
+                        {area}
+                    </label>
+                ))}
             </div>
 
             {/* Cards */}
@@ -106,7 +149,7 @@ const FacultyPage = () => {
                     ))
                 ) : (
                     <div className="col-span-full text-center text-gray-500">
-                        No {viewMode} found matching search
+                        No {viewMode} found matching criteria
                     </div>
                 )}
             </div>
